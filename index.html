@@ -4,79 +4,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Location Sharing</title>
+  <title>Share My Location</title>
 </head>
-<body style="font-family:Arial,sans-serif;max-width:500px;margin:50px auto;padding:20px;line-height:1.6">
-
+<body style="font-family:Arial;max-width:500px;margin:40px auto;padding:20px">
   <h2>Share Your Location</h2>
-
   <p>
-    If you choose to continue, your browser will ask
-    permission to access your device's location.
-    Your coordinates will be displayed on this page.
+    Press the button to get your location.
+    You can then choose whether to share it with someone.
   </p>
 
-  <button id="share" style="padding:12px 18px;cursor:pointer">
-    Share my location
-  </button>
-
-  <p id="status" role="status" aria-live="polite"></p>
-  <div id="result"></div>
+  <button id="share">Get and Share Location</button>
+  <p id="status" aria-live="polite"></p>
 
   <script>
     const button = document.getElementById("share");
     const status = document.getElementById("status");
-    const result = document.getElementById("result");
 
-    button.addEventListener("click", () => {
-      result.replaceChildren();
-
+    button.onclick = () => {
       if (!navigator.geolocation) {
-        status.textContent = "Location is not supported by this browser.";
+        status.textContent = "Location is not supported.";
         return;
       }
 
-      status.textContent = "Waiting for your permission...";
       button.disabled = true;
+      status.textContent = "Waiting for location permission...";
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          const accuracy = Math.round(position.coords.accuracy);
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const mapLink =
+          `https://maps.google.com/?q=${lat},${lon}`;
 
-          status.textContent = "Location obtained.";
-          const details = document.createElement("p");
-          details.textContent =
-            `Latitude: ${lat}; Longitude: ${lon}; Accuracy: approximately ${accuracy} metres.`;
+        const message = `I chose to share my location: ${mapLink}`;
 
-          const map = document.createElement("a");
-          map.href = `https://www.google.com/maps?q=${lat},${lon}`;
-          map.textContent = "View location on Google Maps";
-          map.target = "_blank";
-          map.rel = "noopener noreferrer";
-
-          result.append(details, map);
-          button.disabled = false;
-        },
-        (error) => {
-          const messages = {
-            1: "Permission was denied. Allow location access if you wish to share it.",
-            2: "Location is currently unavailable. Check your GPS and settings.",
-            3: "Request timed out. Please try again."
-          };
-
+        try {
+          if (navigator.share) {
+            await navigator.share({
+              title: "My shared location",
+              text: message
+            });
+            status.textContent = "Sharing options opened.";
+          } else {
+            await navigator.clipboard.writeText(message);
+            status.textContent =
+              "Location link copied. You can paste it into WhatsApp.";
+          }
+        } catch (e) {
           status.textContent =
-            messages[error.code] || "Could not obtain location.";
-          button.disabled = false;
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 25000,
-          maximumAge: 0
+            "Sharing cancelled or unavailable. You can try again.";
         }
-      );
-    });
+
+        button.disabled = false;
+      }, (err) => {
+        status.textContent =
+          err.code === 1
+            ? "Location permission was denied."
+            : "Location unavailable. Check GPS and try again.";
+        button.disabled = false;
+      }, {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 0
+      });
+    };
   </script>
 </body>
 </html>
